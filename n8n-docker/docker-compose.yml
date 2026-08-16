@@ -1,9 +1,8 @@
-
 services:
   postgres:
     image: postgres:13-alpine
     container_name: n8n_postgres
-    restart: always
+    restart: unless-stopped
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -21,40 +20,54 @@ services:
   n8n:
     image: n8nio/n8n:latest
     container_name: n8n_app
-    restart: always
-    # Важно: слушаем только localhost, чтобы доступ был только через Nginx
+    restart: unless-stopped
     ports:
       - "127.0.0.1:5678:5678"
     environment:
+      # === БАЗА ДАННЫХ ===
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
       - DB_POSTGRESDB_USER=${POSTGRES_USER}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+
+      # === ОСНОВНЫЕ НАСТРОЙКИ ===
       - N8N_HOST=${N8N_HOST}
       - N8N_PORT=${N8N_PORT}
       - N8N_PROTOCOL=${N8N_PROTOCOL}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_SECURE_COOKIE=false
-      - EXECUTIONS_DATA_PRUNE=true
-      - N8N_USER_FOLDER=/home/node/.n8n
-      - N8N_RUNNERS_ENABLED=false
-      - N8N_FILESYSTEM_ALLOWED_PATHS=/home/node/.n8n-files:/home/node/.n8n:/SadTalker
-      - N8N_DEFAULT_BINARY_DATA_MODE=default
       - N8N_TRUST_PROXY=true
+      - N8N_USER_FOLDER=/home/node/.n8n
+      - N8N_FILESYSTEM_ALLOWED_PATHS=${N8N_FILESYSTEM_ALLOWED_PATHS}
+      - EXECUTIONS_DATA_PRUNE=true
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
       - TZ=${TZ}
-      - WEBHOOK_URL=${WEBHOOK_URL}
 
-      # === Настройки SMTP ===
-      - N8N_EMAIL_MODE=smtp
+      # === ВЕБХУКИ (НОВОЕ И СТАРОЕ ДЛЯ СОВМЕСТИМОСТИ) ===
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}  # ✅ НОВАЯ переменная
+
+
+      # === УСТРАНЕНИЕ ПРЕДУПРЕЖДЕНИЙ ===
+      # ✅ УДАЛЕНА: N8N_RUNNERS_ENABLED (больше не нужна)
+
+      # ✅ ДОБАВЛЕНЫ ЯВНЫЕ ЗНАЧЕНИЯ (чтобы избежать изменений в будущем)
+      - N8N_UNVERIFIED_PACKAGES_ENABLED=${N8N_UNVERIFIED_PACKAGES_ENABLED}
+      - N8N_RUNNERS_TASK_TIMEOUT=${N8N_RUNNERS_TASK_TIMEOUT}
+      - N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES=${N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES}
+      - N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES=${N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES}
+      - N8N_DEFAULT_BINARY_DATA_MODE=${N8N_DEFAULT_BINARY_DATA_MODE}  # ✅ filesystem
+
+      # === SMTP ===
+      - N8N_EMAIL_MODE=${N8N_EMAIL_MODE}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_SECURE=${SMTP_SECURE}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_SENDER=${SMTP_SENDER}
+
     volumes:
       - ./data:/home/node/.n8n-files
       - /home/cubinez85/SadTalker:/SadTalker
